@@ -1,0 +1,39 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function ownsPath(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    match /videos/{userId}/{fileName} {
+      allow read: if true;
+      allow create: if ownsPath(userId);
+      allow update: if ownsPath(userId);
+      allow delete: if ownsPath(userId);
+    }
+
+    match /thumbnails/{userId}/{fileName} {
+      allow read: if true;
+      allow create: if ownsPath(userId);
+      allow update: if ownsPath(userId);
+      allow delete: if ownsPath(userId);
+    }
+
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+      allow create: if ownsPath(userId);
+      allow update: if ownsPath(userId);
+      allow delete: if ownsPath(userId);
+    }
+
+    match /profile_pictures/{fileName} {
+      allow read: if true;
+      allow write: if signedIn();
+    }
+  }
+}

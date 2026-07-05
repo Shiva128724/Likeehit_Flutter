@@ -1,0 +1,47 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "hostRankingHourKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hostHourlyEarnedStars",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "hostRankingDayKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hostDailyEarnedStars",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "hostRankingWeekKey",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "hostWeeklyEarnedStars",
+          "order": "DESCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

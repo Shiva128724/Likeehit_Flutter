@@ -1,0 +1,104 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isPostOwner() {
+      return signedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    function isCreatingOwnPost() {
+      return signedIn() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if isCreatingOwnPost();
+      allow update: if signedIn();
+      allow delete: if isPostOwner();
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn();
+        allow update, delete: if signedIn()
+          && resource.data.userId == request.auth.uid;
+
+        match /replies/{replyId} {
+          allow read: if true;
+          allow create: if signedIn();
+          allow update, delete: if signedIn()
+            && resource.data.userId == request.auth.uid;
+        }
+      }
+    }
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update, delete: if signedIn()
+        && request.auth.uid == userId;
+
+      match /{subdocument=**} {
+        allow read: if signedIn();
+        allow write: if signedIn();
+      }
+    }
+
+    match /liveRooms/{roomId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.hostId == request.auth.uid;
+      allow update: if signedIn();
+      allow delete: if signedIn()
+        && resource.data.hostId == request.auth.uid;
+
+      match /messages/{messageId} {
+        allow read: if true;
+        allow create: if signedIn();
+        allow update, delete: if signedIn()
+          && resource.data.uid == request.auth.uid;
+      }
+
+      match /giftEvents/{eventId} {
+        allow read: if true;
+        allow create: if signedIn();
+        allow update, delete: if false;
+      }
+
+      match /vipEntries/{entryId} {
+        allow read: if true;
+        allow create: if signedIn();
+        allow update, delete: if false;
+      }
+
+      match /system/{docId} {
+        allow read: if true;
+        allow write: if signedIn();
+      }
+    }
+
+    match /party_rooms/{roomId} {
+      allow read: if true;
+      allow create, update: if signedIn();
+      allow delete: if false;
+
+      match /seats/{seatId} {
+        allow read: if true;
+        allow create, update: if signedIn();
+        allow delete: if false;
+      }
+
+      match /chats/{chatId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.messageText is string
+          && request.resource.data.messageText.size() > 0
+          && request.resource.data.messageText.size() <= 500;
+        allow update, delete: if false;
+      }
+    }
+  }
+}

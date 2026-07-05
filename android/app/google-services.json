@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "82314281320",
+    "firebase_url": "https://likeehit-flutter-435116-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "likeehit-flutter-435116",
+    "storage_bucket": "likeehit-flutter-435116.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:82314281320:android:0def5727ef79e6702516dd",
+        "android_client_info": {
+          "package_name": "com.likeehit.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "82314281320-jf5r1juhlo852v9ionulvh12vhrfc9o1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.likeehit.app",
+            "certificate_hash": "600e8413c8c1f82ba5019eb5de908d6a584c1e32"
+          }
+        },
+        {
+          "client_id": "82314281320-agnul0gorugou8dofolpa2ir1d943rsn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAXUU3X2ogdEH6cnOY0abi4SCDe6320oTc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "82314281320-agnul0gorugou8dofolpa2ir1d943rsn.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "82314281320-ticgtoc5rbth1ipmuiv7gptdajlodjdg.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.likeehit.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
