@@ -6,99 +6,327 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isPostOwner() {
+    function owns(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function changedOnly(fields) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(fields);
+    }
+
+    function keysOnly(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function postOwner() {
       return signedIn() && resource.data.userId == request.auth.uid;
     }
 
-    function isCreatingOwnPost() {
-      return signedIn() && request.resource.data.userId == request.auth.uid;
+    function creatingOwnPost() {
+      return signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && keysOnly([
+          'allowComments',
+          'attachedLink',
+          'caption',
+          'comments',
+          'createdAt',
+          'isHighQuality',
+          'location',
+          'privacy',
+          'shares',
+          'taggedUsers',
+          'thumbnail',
+          'thumbnailUrl',
+          'userId',
+          'userPhotoUrl',
+          'username',
+          'videoUrl',
+          'views',
+          'viewsCount'
+        ]);
+    }
+
+    function safePostOwnerUpdate() {
+      return postOwner()
+        && changedOnly([
+          'allowComments',
+          'attachedLink',
+          'broken',
+          'caption',
+          'isHighQuality',
+          'location',
+          'privacy',
+          'taggedUsers',
+          'thumbnail',
+          'thumbnailUrl',
+          'updatedAt',
+          'videoUrl'
+        ]);
+    }
+
+    function creatingOwnMessage() {
+      return signedIn()
+        && (
+          request.resource.data.uid == request.auth.uid
+          || request.resource.data.userId == request.auth.uid
+          || request.resource.data.senderId == request.auth.uid
+        );
+    }
+
+    function safeUserProfileKeys() {
+      return [
+        'bio',
+        'birthday',
+        'category',
+        'createdAt',
+        'displayName',
+        'email',
+        'gender',
+        'name',
+        'phoneNumber',
+        'photoURL',
+        'photoUrl',
+        'profileId',
+        'uid',
+        'updatedAt',
+        'username',
+        'website'
+      ];
+    }
+
+    function creatingOwnUserProfile(userId) {
+      return owns(userId)
+        && request.resource.data.uid == userId
+        && keysOnly(safeUserProfileKeys());
+    }
+
+    function updatingOwnUserProfile(userId) {
+      return owns(userId)
+        && changedOnly(safeUserProfileKeys())
+        && request.resource.data.uid == userId;
+    }
+
+    function isLiveHost(roomId) {
+      return signedIn()
+        && get(/databases/$(database)/documents/liveRooms/$(roomId)).data.hostId == request.auth.uid;
+    }
+
+    function creatingOwnLiveRoom() {
+      return signedIn()
+        && request.resource.data.hostId == request.auth.uid;
+    }
+
+    function safeHostLiveRoomUpdate() {
+      return signedIn()
+        && resource.data.hostId == request.auth.uid
+        && changedOnly([
+          'coverUrl',
+          'hashtag',
+          'hostMuted',
+          'hostCameraOff',
+          'isLive',
+          'lastConnectedAt',
+          'leftAt',
+          'liveFailedAt',
+          'liveFailureReason',
+          'title',
+          'updatedAt'
+        ]);
+    }
+
+    function creatingPartyChat() {
+      return signedIn()
+        && request.resource.data.senderId == request.auth.uid
+        && request.resource.data.messageText is string
+        && request.resource.data.messageText.size() > 0
+        && request.resource.data.messageText.size() <= 500;
     }
 
     match /posts/{postId} {
       allow read: if true;
-      allow create: if isCreatingOwnPost();
-      allow update: if signedIn();
-      allow delete: if isPostOwner();
+      allow create: if creatingOwnPost();
+      allow update: if safePostOwnerUpdate();
+      allow delete: if postOwner();
 
       match /comments/{commentId} {
         allow read: if true;
-        allow create: if signedIn();
+        allow create: if creatingOwnMessage()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 1000;
         allow update, delete: if signedIn()
           && resource.data.userId == request.auth.uid;
 
         match /replies/{replyId} {
           allow read: if true;
-          allow create: if signedIn();
+          allow create: if creatingOwnMessage()
+            && request.resource.data.text is string
+            && request.resource.data.text.size() > 0
+            && request.resource.data.text.size() <= 1000;
           allow update, delete: if signedIn()
             && resource.data.userId == request.auth.uid;
         }
+      }
+
+      match /videoGiftEvents/{eventId} {
+        allow read: if true;
+        allow write: if false;
       }
     }
 
     match /users/{userId} {
       allow read: if true;
-      allow create, update, delete: if signedIn()
-        && request.auth.uid == userId;
+      allow create: if creatingOwnUserProfile(userId);
+      allow update: if updatingOwnUserProfile(userId);
+      allow delete: if false;
+
+      match /walletTransactions/{docId} {
+        allow read: if owns(userId);
+        allow write: if false;
+      }
+
+      match /starRechargeOrders/{docId} {
+        allow read: if owns(userId);
+        allow write: if false;
+      }
+
+      match /svipPurchases/{docId} {
+        allow read: if owns(userId);
+        allow write: if false;
+      }
+
+      match /notifications/{docId} {
+        allow read: if owns(userId);
+        allow create, delete: if false;
+        allow update: if owns(userId) && changedOnly(['read', 'updatedAt']);
+      }
+
+      match /followers/{followerId} {
+        allow read: if signedIn();
+        allow create, delete: if owns(followerId);
+        allow update: if false;
+      }
+
+      match /following/{targetId} {
+        allow read: if owns(userId);
+        allow create, delete: if owns(userId);
+        allow update: if false;
+      }
 
       match /{subdocument=**} {
-        allow read: if signedIn();
-        allow write: if signedIn();
+        allow read: if owns(userId);
+        allow write: if owns(userId);
       }
     }
 
     match /liveRooms/{roomId} {
       allow read: if true;
-      allow create: if signedIn()
-        && request.resource.data.hostId == request.auth.uid;
-      allow update: if signedIn();
-      allow delete: if signedIn()
-        && resource.data.hostId == request.auth.uid;
+      allow create: if creatingOwnLiveRoom();
+      allow update: if safeHostLiveRoomUpdate();
+      allow delete: if signedIn() && resource.data.hostId == request.auth.uid;
 
       match /messages/{messageId} {
         allow read: if true;
-        allow create: if signedIn();
+        allow create: if creatingOwnMessage()
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500;
         allow update, delete: if signedIn()
           && resource.data.uid == request.auth.uid;
       }
 
       match /giftEvents/{eventId} {
         allow read: if true;
-        allow create: if signedIn();
-        allow update, delete: if false;
+        allow write: if false;
+      }
+
+      match /roomGiftLeaders/{leaderId} {
+        allow read: if true;
+        allow write: if false;
       }
 
       match /vipEntries/{entryId} {
         allow read: if true;
-        allow create: if signedIn();
+        allow create: if creatingOwnMessage();
         allow update, delete: if false;
       }
 
       match /system/{docId} {
         allow read: if true;
-        allow write: if signedIn();
+        allow write: if false;
       }
+
+      match /pkResults/{docId} {
+        allow read: if true;
+        allow write: if false;
+      }
+
+      match /blockedUsers/{targetId} {
+        allow read: if signedIn();
+        allow create, delete: if isLiveHost(roomId);
+        allow update: if false;
+      }
+
+      match /chatDisabledUsers/{targetId} {
+        allow read: if signedIn();
+        allow create, delete: if isLiveHost(roomId);
+        allow update: if false;
+      }
+    }
+
+    match /pkRequests/{requestId} {
+      allow read: if signedIn()
+        && (
+          resource.data.senderHostId == request.auth.uid
+          || resource.data.targetHostId == request.auth.uid
+          || resource.data.senderUid == request.auth.uid
+          || resource.data.targetUid == request.auth.uid
+        );
+      allow write: if false;
     }
 
     match /party_rooms/{roomId} {
       allow read: if true;
-      allow create, update: if signedIn();
+      allow create: if signedIn()
+        && request.resource.data.hostId == request.auth.uid;
+      allow update: if signedIn()
+        && resource.data.hostId == request.auth.uid;
       allow delete: if false;
 
       match /seats/{seatId} {
         allow read: if true;
-        allow create, update: if signedIn();
+        allow create, update: if signedIn()
+          && (
+            request.resource.data.userId == request.auth.uid
+            || get(/databases/$(database)/documents/party_rooms/$(roomId)).data.hostId == request.auth.uid
+          );
         allow delete: if false;
       }
 
       match /chats/{chatId} {
         allow read: if true;
-        allow create: if signedIn()
-          && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.messageText is string
-          && request.resource.data.messageText.size() > 0
-          && request.resource.data.messageText.size() <= 500;
+        allow create: if creatingPartyChat();
         allow update, delete: if false;
       }
+
+      match /blockedUsers/{targetId} {
+        allow read: if signedIn();
+        allow create, delete: if signedIn()
+          && get(/databases/$(database)/documents/party_rooms/$(roomId)).data.hostId == request.auth.uid;
+        allow update: if false;
+      }
+
+      match /chatDisabledUsers/{targetId} {
+        allow read: if signedIn();
+        allow create, delete: if signedIn()
+          && get(/databases/$(database)/documents/party_rooms/$(roomId)).data.hostId == request.auth.uid;
+        allow update: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
